@@ -1,6 +1,101 @@
+// transactionsController.js - Updated with better error handling and debugging
+
 import {sql} from '../config/db.js'
 
+export async function createTransaction(req, res) {
+    try {
+        console.log("=== CREATE TRANSACTION DEBUG ===");
+        console.log("req.body:", req.body);
+        console.log("req.headers:", req.headers);
+        console.log("Content-Type:", req.get('Content-Type'));
+        console.log("req.body type:", typeof req.body);
+        console.log("req.body keys:", req.body ? Object.keys(req.body) : 'no keys');
 
+        // Check if req.body exists
+        if (!req.body) {
+            console.error("req.body is undefined or null");
+            return res.status(400).json({
+                error: "Request body is missing",
+                contentType: req.get('Content-Type'),
+                headers: req.headers
+            });
+        }
+
+        // Check if req.body is empty object
+        if (Object.keys(req.body).length === 0) {
+            console.error("req.body is empty object");
+            return res.status(400).json({
+                error: "Request body is empty",
+                contentType: req.get('Content-Type'),
+                headers: req.headers
+            });
+        }
+
+        const {title, amount, category, user_id} = req.body;
+        
+        console.log("Extracted values:", {title, amount, category, user_id});
+
+        // Validate required fields
+        if (!title || !user_id || !category || amount === undefined) {
+            console.error("Missing required fields:", {
+                title: !!title,
+                user_id: !!user_id,
+                category: !!category,
+                amount: amount !== undefined
+            });
+            return res.status(400).json({
+                error: "All fields are required",
+                received: {title, amount, category, user_id},
+                missing: {
+                    title: !title,
+                    user_id: !user_id,
+                    category: !category,
+                    amount: amount === undefined
+                }
+            });
+        }
+
+        // Log the incoming request data
+        console.log("Creating transaction with data:", { title, amount, category, user_id });
+
+        try {
+            const transaction = await sql`
+                INSERT INTO transactions(user_id, title, amount, category)
+                VALUES (${user_id}, ${title}, ${amount}, ${category})
+                RETURNING *;
+            `;
+            console.log("Transaction created successfully:", transaction);
+            res.status(201).json(transaction[0]);
+        } catch (dbError) {
+            console.error("Database error details:", {
+                message: dbError.message,
+                code: dbError.code,
+                detail: dbError.detail,
+                hint: dbError.hint,
+                where: dbError.where
+            });
+            throw dbError;
+        }
+    }
+    catch (error) {
+        console.error("Detailed error creating transaction:", {
+            error: error.message,
+            stack: error.stack,
+            code: error.code,
+            detail: error.detail,
+            hint: error.hint,
+            where: error.where
+        });
+        res.status(500).json({
+            message: "Internal server error",
+            error: error.message,
+            code: error.code,
+            detail: error.detail
+        });
+    }
+}
+
+// Keep your other functions unchanged
 export async function getTransactionsByUserId(req,res) {
     try {
         const {user_id} = req.params
@@ -16,26 +111,6 @@ export async function getTransactionsByUserId(req,res) {
         return res.status(500).json({error: "Internal server error"})
     }
 } 
-
-export async function createTransaction (req, res)  {
-    try {
-        const {title,amount,category,user_id} = req.body;
-        if(!title || !amount || !category || !user_id === undefined) {
-            return res.status(400).json({error:"All fields are required"});
-        }
-        const transaction = await sql`
-            INSERT INTO transactions (user_id, title, amount, category)
-            VALUES (${user_id}, ${title}, ${amount}, ${category})
-            RETURNING *;
-        `;
-        console.log("Transaction created:", transaction);
-        res.status(201).json(transaction[0]);
-    }
-    catch (error) {
-        console.error("Error creating transaction:", error);
-        res.status(500).json({error:"Internal server error"});
-    }
-}
 
 export async function deleteTransaction(req,res){
     try {
