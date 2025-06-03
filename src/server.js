@@ -1,6 +1,5 @@
 import express from 'express';
 import dotenv from 'dotenv';
-import cors from 'cors';
 import { initDB } from './config/db.js';
 import rateLimiter from './middleware/rateLimiter.js';
 import transactionsRoute from './routes/transactionsRoute.js';
@@ -15,12 +14,6 @@ if(process.env.NODE_ENV === 'production') {
 const PORT = process.env.PORT || 5001
 
 //middleware
-app.use(cors({
-    origin: ['http://localhost:19000', 'http://localhost:19006', 'exp://localhost:19000'],
-    methods: ['GET', 'POST', 'DELETE', 'PUT'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-    credentials: true
-}));
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 app.use(rateLimiter)
